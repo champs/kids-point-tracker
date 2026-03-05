@@ -4,8 +4,27 @@ let sessionToken = null;
 let selectedKidId = null;
 let selectedTag = null;
 let selectedTagColor = '#FF6B6B';
+let selectedQuickValue = 5;
 let kids = [];
 let tags = [];
+
+// Toast notification system
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => toast.classList.add('toast-show'));
+    });
+
+    setTimeout(() => {
+        toast.classList.remove('toast-show');
+        setTimeout(() => toast.remove(), 250);
+    }, 3000);
+}
 
 // Session management
 const SESSION_STORAGE_KEY = 'kids_points_session';
@@ -295,10 +314,15 @@ function renderTags() {
     `).join('');
 }
 
-// Select tag
+// Select tag (tap again to deselect)
 function selectTag(tagName, color) {
-    selectedTag = tagName;
-    selectedTagColor = color;
+    if (selectedTag === tagName) {
+        selectedTag = null;
+        selectedTagColor = '#FF6B6B';
+    } else {
+        selectedTag = tagName;
+        selectedTagColor = color;
+    }
     renderTags();
 }
 
@@ -324,18 +348,31 @@ function decrementPoints() {
 }
 
 function setPoints(value) {
+    selectedQuickValue = value;
     document.getElementById('pointsInput').value = value;
+    updateQuickBtns();
+}
+
+function updateQuickBtns() {
+    document.querySelectorAll('.quick-btn').forEach(btn => {
+        btn.classList.toggle('selected', parseInt(btn.dataset.value) === selectedQuickValue);
+    });
 }
 
 // Add points
 function addPoints() {
     if (!selectedKidId) {
-        alert('Please select a kid first');
+        showToast('Please select a kid first', 'warning');
         return;
     }
-    
+
     const points = parseInt(document.getElementById('pointsInput').value);
-    
+    const kid = kids.find(k => k.id === selectedKidId);
+    const btn = document.querySelector('.btn-add');
+
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+
     fetch('/api/transactions', {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -348,26 +385,36 @@ function addPoints() {
     .then(handleApiResponse)
     .then(r => r.json())
     .then(() => {
+        showToast(`+${points} pts added for ${kid ? kid.name : 'kid'}!`, 'success');
         animateSuccess();
         loadData();
     })
     .catch(error => {
         if (error.message !== 'Session expired. Please login again.') {
             console.error('Error adding points:', error);
-            alert('Error adding points. Please try again.');
+            showToast('Error adding points. Please try again.', 'error');
         }
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = `<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg> Add Points`;
     });
 }
 
 // Remove points
 function removePoints() {
     if (!selectedKidId) {
-        alert('Please select a kid first');
+        showToast('Please select a kid first', 'warning');
         return;
     }
-    
+
     const points = parseInt(document.getElementById('pointsInput').value);
-    
+    const kid = kids.find(k => k.id === selectedKidId);
+    const btn = document.querySelector('.btn-remove');
+
+    btn.disabled = true;
+    btn.textContent = 'Removing…';
+
     fetch('/api/transactions', {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -380,14 +427,19 @@ function removePoints() {
     .then(handleApiResponse)
     .then(r => r.json())
     .then(() => {
+        showToast(`-${points} pts removed for ${kid ? kid.name : 'kid'}`, 'success');
         animateSuccess();
         loadData();
     })
     .catch(error => {
         if (error.message !== 'Session expired. Please login again.') {
             console.error('Error removing points:', error);
-            alert('Error removing points. Please try again.');
+            showToast('Error removing points. Please try again.', 'error');
         }
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = `<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg> Remove Points`;
     });
 }
 
@@ -493,14 +545,14 @@ function updateKid(kidId) {
     const color = document.getElementById(`kidColor${kidId}`).value;
     
     if (!name || !initials || initials.length !== 2) {
-        alert('Please enter a name and exactly 2 letters for initials');
+        showToast('Please enter a name and exactly 2 letters for initials', 'warning');
         return;
     }
-    
+
     // Ensure we have a session token or password
     const authHeaders = getAuthHeaders();
     if (!authHeaders['x-session-token'] && !authHeaders['x-password']) {
-        alert('Session expired. Please login again.');
+        showToast('Session expired. Please login again.', 'error');
         showLoginModal();
         return;
     }
@@ -523,13 +575,14 @@ function updateKid(kidId) {
         return response.json();
     })
     .then(() => {
+        showToast('Settings saved!', 'success');
         closeSettings();
         loadKids();
     })
     .catch(error => {
         if (error.message !== 'Session expired. Please login again.') {
             console.error('Error updating kid:', error);
-            alert(`Error updating kid: ${error.message}. Please try again.`);
+            showToast('Error saving settings. Please try again.', 'error');
         }
     });
 }
@@ -558,7 +611,7 @@ function createNewTag() {
     const is_positive = document.getElementById('newTagType').value === '1';
     
     if (!name) {
-        alert('Please enter a tag name');
+        showToast('Please enter a tag name', 'warning');
         return;
     }
     
@@ -575,16 +628,17 @@ function createNewTag() {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
+            showToast(`Tag "${name}" created!`, 'success');
             closeNewTagModal();
             loadTags();
         } else {
-            alert('Tag already exists');
+            showToast('Tag name already exists', 'warning');
         }
     })
     .catch(error => {
         if (error.message !== 'Session expired. Please login again.') {
             console.error('Error creating tag:', error);
-            alert('Error creating tag. Please try again.');
+            showToast('Error creating tag. Please try again.', 'error');
         }
     });
 }
