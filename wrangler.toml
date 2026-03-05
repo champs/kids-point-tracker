@@ -11,5 +11,3 @@ binding = "DB"
 database_name = "kids-point-tracker"
 database_id = "b473ddeb-c494-4703-a773-9329b13a7f4c"
 
-[vars]
-ADMIN_PASSWORD = "pp2026"

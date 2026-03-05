@@ -8,7 +8,7 @@ export async function onRequestPost({ request, env }) {
   const password = request.headers.get('x-password') || '';
   const adminPassword = env.ADMIN_PASSWORD || 'parent123';
 
-  if (password.trim() !== adminPassword) {
+  if (password.trim() !== adminPassword.trim()) {
     return errorResponse('Incorrect password', 401);
   }
 

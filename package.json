@@ -4,7 +4,7 @@
   "description": "Mobile-first point tracking system for kids with screen time rewards",
   "scripts": {
     "dev": "wrangler pages dev public",
-    "deploy": "wrangler pages deploy public --project-name=kids-point-tracker",
+    "pages:deploy": "wrangler pages deploy public --project-name=kids-point-tracker",
     "db:create": "wrangler d1 create kids-point-tracker",
     "db:init": "wrangler d1 execute kids-point-tracker --file=schema.sql --local",
     "db:init:remote": "wrangler d1 execute kids-point-tracker --file=schema.sql --remote"
