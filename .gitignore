@@ -61,5 +61,8 @@ test-results/
 *.backup
 .cache/
 
+# Claude Code worktrees (not real submodules)
+.claude/worktrees/
+
 # Session tokens and sensitive test data
 # Note: Test files (test-*.js) are okay to commit as they use default test password
